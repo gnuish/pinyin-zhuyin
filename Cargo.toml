@@ -1,0 +1,14 @@
+[package]
+name = "pinyin_zhuyin"
+version = "0.1.0"
+authors = ["Ariel Dabalsa <arieldabalsa@gmail.com>"]
+description = "Convert between pinyin forms or zhuyin"
+repository = "https://github.com/gnuish/PinyinZhuyin"
+keywords = ["pinyin", "zhuyin", "chinese"]
+license = "MIT"
+
+[dependencies]
+phf="0.7"
+
+[build-dependencies]
+phf_codegen="0.7"
