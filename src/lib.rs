@@ -109,7 +109,7 @@ fn decode_rhyme(s: &str) -> Option<(String, u8)> {
 ///
 /// # Examples
 /// ```
-/// # use zhuyin::*;
+/// # use pinyin_zhuyin::*;
 /// assert_eq!(split("shuang1"), Some(("sh", "uang", 1)));
 /// assert_eq!(split("a"), Some(("", "a", 5)));
 ///
@@ -165,7 +165,7 @@ fn _split(s: &str) -> Option<(&str, &str, u8)> {
 ///
 /// # Examples
 /// ```
-/// # use zhuyin::*;
+/// # use pinyin_zhuyin::*;
 /// assert_eq!(encode_pinyin("ma3"), Some("mǎ".to_owned()));
 /// assert_eq!(encode_pinyin("er2"), Some("ér".to_owned()));
 /// assert_eq!(encode_pinyin("r5"), Some("r".to_owned()));
@@ -229,7 +229,7 @@ fn encode_pinyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
 ///
 /// # Example
 /// ```
-/// # use zhuyin::*;
+/// # use pinyin_zhuyin::*;
 /// assert_eq!(decode_pinyin("mǎ"), Some("ma3".to_owned()));
 /// assert_eq!(decode_pinyin("ér"), Some("er2".to_owned()));
 /// assert_eq!(decode_pinyin("r"), Some("r5".to_owned()));
@@ -301,7 +301,7 @@ fn decode_pinyin_to_parts(s: &str) -> Option<(&str, String, u8)> {
 ///
 /// # Example
 /// ```
-/// # use zhuyin::*;
+/// # use pinyin_zhuyin::*;
 /// assert_eq!(encode_zhuyin("ma3"), Some("ㄇㄚˇ".to_owned()));
 /// ```
 pub fn encode_zhuyin<S>(s: S) -> Option<String>
@@ -383,7 +383,7 @@ fn encode_zhuyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
 ///
 /// # Example
 /// ```
-/// # use zhuyin::*;
+/// # use pinyin_zhuyin::*;
 /// assert_eq!(decode_zhuyin("ㄇㄚˇ"), Some("ma3".to_owned()));
 /// ```
 pub fn decode_zhuyin<S>(s: S) -> Option<String>
@@ -503,7 +503,7 @@ fn decode_zhuyin_to_parts(s: &str) -> Option<(String, String, u8)> {
 ///
 /// # Example
 /// ```
-/// # use zhuyin::*;
+/// # use pinyin_zhuyin::*;
 /// assert_eq!(pinyin_to_zhuyin("mǎ"), Some("ㄇㄚˇ".to_owned()));
 /// ```
 pub fn pinyin_to_zhuyin<S>(s: S) -> Option<String>
@@ -520,7 +520,7 @@ pub fn pinyin_to_zhuyin<S>(s: S) -> Option<String>
 ///
 /// # Example
 /// ```
-/// # use zhuyin::*;
+/// # use pinyin_zhuyin::*;
 /// assert_eq!(zhuyin_to_pinyin("ㄇㄚˇ"), Some("mǎ".to_owned()));
 /// ```
 pub fn zhuyin_to_pinyin<S>(s: S) -> Option<String>
