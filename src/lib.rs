@@ -545,9 +545,10 @@ mod tests {
     #[test]
     fn encode_pinyin_test() {
         assert_eq!(encode_pinyin("e5"), s!("ê"));
-        assert_eq!(encode_pinyin("ju0"), s!("ju"));
-        assert_eq!(encode_pinyin("jv"), s!("ju"));
-        assert_eq!(encode_pinyin("lv3"), s!("lǚ"));
+        assert_eq!(encode_pinyin("a0"), s!("a"));
+        assert_eq!(encode_pinyin("a"), s!("a"));
+        assert_eq!(encode_pinyin("ju3"), s!("jǔ"));
+        assert_eq!(encode_pinyin("jv3"), s!("jǔ"));
         assert_eq!(encode_pinyin("lvan4"), s!("lüàn")); // not valid, for test only
         assert_eq!(encode_pinyin("zhuan4"), s!("zhuàn"));
         assert_eq!(encode_pinyin("zhao2"), s!("zháo"));
@@ -562,12 +563,11 @@ mod tests {
         assert_eq!(encode_pinyin("er2"), s!("ér"));
         assert_eq!(encode_pinyin("r5"), s!("r"));
 
-        assert_eq!(encode_pinyin("alkfj"), None);
         assert_eq!(encode_pinyin("zh3"), None);
         assert_eq!(encode_pinyin("zhaang4"), None);
-        assert_eq!(encode_pinyin("你好"), None);
-        assert_eq!(encode_pinyin("a你好"), None);
-        assert_eq!(encode_pinyin("你好zhang1"), None);
+        assert_eq!(encode_pinyin("啊"), None);
+        assert_eq!(encode_pinyin("a5啊"), None);
+        assert_eq!(encode_pinyin("啊a5"), None);
         assert_eq!(encode_pinyin(""), None);
     }
 
@@ -589,21 +589,21 @@ mod tests {
         assert_eq!(decode_pinyin("ér"), s!("er2"));
         assert_eq!(decode_pinyin("r"), s!("r5"));
 
-        assert_eq!(decode_pinyin("alkfj"), None);
-        assert_eq!(decode_pinyin("zh3"), None);
-        assert_eq!(decode_pinyin("zhaang4"), None);
-        assert_eq!(decode_pinyin("你好"), None);
-        assert_eq!(decode_pinyin("a你好"), None);
-        assert_eq!(decode_pinyin("你好zhang1"), None);
+        assert_eq!(decode_pinyin("a5"), None);
+        assert_eq!(decode_pinyin("zhāāng"), None);
+        assert_eq!(decode_pinyin("啊"), None);
+        assert_eq!(decode_pinyin("a啊"), None);
+        assert_eq!(decode_pinyin("啊a"), None);
         assert_eq!(decode_pinyin(""), None);
     }
 
     #[test]
     fn encode_zhuyin_test() {
         assert_eq!(encode_zhuyin("e5"), s!("ㄝ"));
-        assert_eq!(encode_zhuyin("ju0"), s!("ㄐㄩ˙"));
-        assert_eq!(encode_zhuyin("jv"), s!("ㄐㄩ˙"));
-        assert_eq!(encode_zhuyin("lv3"), s!("ㄌㄩˇ"));
+        assert_eq!(encode_zhuyin("a0"), s!("ㄚ˙"));
+        assert_eq!(encode_zhuyin("a"), s!("ㄚ˙"));
+        assert_eq!(encode_zhuyin("ju3"), s!("ㄐㄩˇ"));
+        assert_eq!(encode_zhuyin("jv3"), s!("ㄐㄩˇ"));
         assert_eq!(encode_zhuyin("lvan4"), s!("ㄌㄩㄢˋ")); // not valid, for test only
         assert_eq!(encode_zhuyin("zhuan4"), s!("ㄓㄨㄢˋ"));
         assert_eq!(encode_zhuyin("zhao2"), s!("ㄓㄠˊ"));
@@ -624,19 +624,17 @@ mod tests {
         assert_eq!(encode_zhuyin("yue4"), s!("ㄩㄝˋ"));
         assert_eq!(encode_zhuyin("zhi4"), s!("ㄓˋ"));
 
-        assert_eq!(encode_pinyin("alkfj"), None);
-        assert_eq!(encode_pinyin("zh3"), None);
-        assert_eq!(encode_pinyin("zhaang4"), None);
-        assert_eq!(encode_pinyin("你好"), None);
-        assert_eq!(encode_pinyin("a你好"), None);
-        assert_eq!(encode_pinyin("你好zhang1"), None);
-        assert_eq!(encode_pinyin(""), None);
+        assert_eq!(encode_zhuyin("zh3"), None);
+        assert_eq!(encode_zhuyin("zhaang4"), None);
+        assert_eq!(encode_zhuyin("啊"), None);
+        assert_eq!(encode_zhuyin("a5啊"), None);
+        assert_eq!(encode_zhuyin("啊a5"), None);
+        assert_eq!(encode_zhuyin(""), None);
     }
 
     #[test]
     fn decode_zhuyin_test() {
         assert_eq!(decode_zhuyin("ㄝ"), s!("e5"));
-        assert_eq!(decode_zhuyin("ㄧ"), s!("yi1"));
         assert_eq!(decode_zhuyin("ㄐㄩ˙"), s!("jv5"));
         assert_eq!(decode_zhuyin("ㄌㄩˇ"), s!("lv3"));
         assert_eq!(decode_zhuyin("ㄌㄩㄢˋ"), s!("lvan4")); // not valid, for test only
@@ -659,14 +657,15 @@ mod tests {
         // Zhuyin-specific
         assert_eq!(decode_zhuyin("ㄨㄥˊ"), s!("weng2"));
 
+        assert_eq!(decode_zhuyin("a5"), None);
         assert_eq!(decode_zhuyin("ㄩㄝㄝ"), None);
         assert_eq!(decode_zhuyin("ㄐˇ"), None);
         assert_eq!(decode_zhuyin("ㄨㄕ"), None);
         assert_eq!(decode_zhuyin("ㄕㄨㄕㄨ"), None);
-        assert_eq!(decode_pinyin("你好"), None);
-        assert_eq!(decode_pinyin("ㄚ你好"), None);
-        assert_eq!(decode_pinyin("你好zhang1"), None);
-        assert_eq!(decode_pinyin(""), None);
+        assert_eq!(decode_zhuyin("啊"), None);
+        assert_eq!(decode_zhuyin("ㄚ啊"), None);
+        assert_eq!(decode_zhuyin("啊ㄚ"), None);
+        assert_eq!(decode_zhuyin(""), None);
     }
 
     #[test]
@@ -678,7 +677,7 @@ mod tests {
         assert_eq!(pinyin_to_zhuyin("r"), s!("ㄦ˙"));
 
         assert_eq!(pinyin_to_zhuyin("wengg"), None);
-        assert_eq!(pinyin_to_zhuyin("你好"), None);
+        assert_eq!(pinyin_to_zhuyin("啊"), None);
         assert_eq!(pinyin_to_zhuyin(""), None);
     }
 
@@ -690,8 +689,8 @@ mod tests {
         assert_eq!(zhuyin_to_pinyin("ㄦˊ"), s!("ér"));
         assert_eq!(zhuyin_to_pinyin("ㄦ˙"), s!("r"));
 
-        assert_eq!(pinyin_to_zhuyin("ㄥㄥ"), None);
-        assert_eq!(pinyin_to_zhuyin("你好"), None);
-        assert_eq!(pinyin_to_zhuyin(""), None);
+        assert_eq!(zhuyin_to_pinyin("ㄥㄥ"), None);
+        assert_eq!(zhuyin_to_pinyin("啊"), None);
+        assert_eq!(zhuyin_to_pinyin(""), None);
     }
 }
