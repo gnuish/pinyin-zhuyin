@@ -80,14 +80,14 @@ fn decode_rhyme(s: &str) -> Option<(String, u8)> {
     // Push each char to the return string, un-accenting chars along the way
     for mut c in s.chars() {
         for t in PINYIN_TONES.iter() {
-            for j in 1..t.len() {
-                if c == t[j] {
+            for i in 1..t.len() {
+                if c == t[i] {
                     // If there's two toned vowels, it's malformed
                     c = t[0];
                     if tone != 0 {
                         return None
                     }
-                    tone = j as u8;
+                    tone = i as u8;
                 }
             }
         }
@@ -572,32 +572,6 @@ mod tests {
     }
 
     #[test]
-    fn decode_pinyin_test() {
-        assert_eq!(decode_pinyin("ê"), s!("e5"));
-        assert_eq!(decode_pinyin("ju"), s!("jv5"));
-        assert_eq!(decode_pinyin("lǚ"), s!("lv3"));
-        assert_eq!(decode_pinyin("lüàn"), s!("lvan4")); // not valid, for test only
-        assert_eq!(decode_pinyin("zhuàn"), s!("zhuan4"));
-        assert_eq!(decode_pinyin("zháo"), s!("zhao2"));
-        assert_eq!(decode_pinyin("lēng"), s!("leng1"));
-        assert_eq!(decode_pinyin("shuǐ"), s!("shui3"));
-        assert_eq!(decode_pinyin("liú"), s!("liu2"));
-        assert_eq!(decode_pinyin("ǎn"), s!("an3"));
-        assert_eq!(decode_pinyin("yí"), s!("yi2"));
-        assert_eq!(decode_pinyin("yuán"), s!("yvan2"));
-        assert_eq!(decode_pinyin("mín"), s!("min2"));
-        assert_eq!(decode_pinyin("ér"), s!("er2"));
-        assert_eq!(decode_pinyin("r"), s!("r5"));
-
-        assert_eq!(decode_pinyin("a5"), None);
-        assert_eq!(decode_pinyin("zhāāng"), None);
-        assert_eq!(decode_pinyin("啊"), None);
-        assert_eq!(decode_pinyin("a啊"), None);
-        assert_eq!(decode_pinyin("啊a"), None);
-        assert_eq!(decode_pinyin(""), None);
-    }
-
-    #[test]
     fn encode_zhuyin_test() {
         assert_eq!(encode_zhuyin("e5"), s!("ㄝ"));
         assert_eq!(encode_zhuyin("a0"), s!("ㄚ˙"));
@@ -630,6 +604,32 @@ mod tests {
         assert_eq!(encode_zhuyin("a5啊"), None);
         assert_eq!(encode_zhuyin("啊a5"), None);
         assert_eq!(encode_zhuyin(""), None);
+    }
+
+    #[test]
+    fn decode_pinyin_test() {
+        assert_eq!(decode_pinyin("ê"), s!("e5"));
+        assert_eq!(decode_pinyin("ju"), s!("jv5"));
+        assert_eq!(decode_pinyin("lǚ"), s!("lv3"));
+        assert_eq!(decode_pinyin("lüàn"), s!("lvan4")); // not valid, for test only
+        assert_eq!(decode_pinyin("zhuàn"), s!("zhuan4"));
+        assert_eq!(decode_pinyin("zháo"), s!("zhao2"));
+        assert_eq!(decode_pinyin("lēng"), s!("leng1"));
+        assert_eq!(decode_pinyin("shuǐ"), s!("shui3"));
+        assert_eq!(decode_pinyin("liú"), s!("liu2"));
+        assert_eq!(decode_pinyin("ǎn"), s!("an3"));
+        assert_eq!(decode_pinyin("yí"), s!("yi2"));
+        assert_eq!(decode_pinyin("yuán"), s!("yvan2"));
+        assert_eq!(decode_pinyin("mín"), s!("min2"));
+        assert_eq!(decode_pinyin("ér"), s!("er2"));
+        assert_eq!(decode_pinyin("r"), s!("r5"));
+
+        assert_eq!(decode_pinyin("a5"), None);
+        assert_eq!(decode_pinyin("zhāāng"), None);
+        assert_eq!(decode_pinyin("啊"), None);
+        assert_eq!(decode_pinyin("a啊"), None);
+        assert_eq!(decode_pinyin("啊a"), None);
+        assert_eq!(decode_pinyin(""), None);
     }
 
     #[test]
