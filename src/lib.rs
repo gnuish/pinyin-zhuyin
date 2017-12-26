@@ -105,18 +105,17 @@ fn decode_rhyme(s: &str) -> Option<(String, u8)> {
 
 /// Split numbered pinyin to (consonant, rhyme, tone)
 ///
-/// No tone number will be converted to tone 5.
+/// Returns None on a missing tone or invalid input.
 ///
 /// # Examples
 /// ```
 /// # use pinyin_zhuyin::*;
 /// assert_eq!(split("shuang1"), Some(("sh", "uang", 1)));
-/// assert_eq!(split("a"), Some(("", "a", 5)));
 ///
 /// assert_eq!(split("zh9"), None);
 /// ```
 pub fn split(s: &str) -> Option<(&str, &str, u8)> {
-    if s == "r" || s == "r5" {
+    if s == "r5" {
         return Some(("", "r", 5))
     }
     _split(s)
@@ -150,18 +149,19 @@ fn _split(s: &str) -> Option<(&str, &str, u8)> {
     let tone;
     if pos < s.len() {
         tone = s[pos] - b'0';
-        if tone > 5 {
+        if tone > 5 || tone < 1 {
             return None
         }
     } else {
-        tone = 5;
+        // No tone
+        return None
     }
     Some((consonant, rhyme, tone))
 }
 
 /// Encode pinyin
 ///
-/// No tone number will be converted to tone 5.
+/// Returns None on a missing tone or invalid input.
 ///
 /// # Examples
 /// ```
@@ -170,7 +170,7 @@ fn _split(s: &str) -> Option<(&str, &str, u8)> {
 /// assert_eq!(encode_pinyin("er2"), Some("ér".to_owned()));
 /// assert_eq!(encode_pinyin("r5"), Some("r".to_owned()));
 ///
-/// assert_eq!(encode_pinyin("llama"), None);
+/// assert_eq!(encode_pinyin("ma"), None);
 /// ```
 pub fn encode_pinyin<S>(s: S) -> Option<String>
     where S: AsRef<str>
@@ -183,10 +183,7 @@ pub fn encode_pinyin<S>(s: S) -> Option<String>
         return Some("r".to_owned())
     }
 
-    let (consonant, rhyme, mut tone) = _split(s)?;
-    if tone == 5 {
-        tone = 0;
-    }
+    let (consonant, rhyme, tone) = _split(s)?;
     encode_pinyin_from_parts(consonant, rhyme, tone)
 }
 
@@ -215,6 +212,10 @@ fn encode_pinyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
     }
 
     // Tone the rhyme and convert 'v' to 'ü'
+    let mut tone = tone;
+    if tone == 5 {
+        tone = 0;
+    }
     let mut rhyme: String = tone_rhyme(&rhyme, tone);
     if rhyme.as_bytes()[0] == b'v' {
         rhyme = "ü".to_owned() + &rhyme[1..];
@@ -225,7 +226,7 @@ fn encode_pinyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
 
 /// Decode pinyin
 ///
-/// Returns None if invalid pinyin
+/// Returns None if invalid input.
 ///
 /// # Example
 /// ```
@@ -297,7 +298,7 @@ fn decode_pinyin_to_parts(s: &str) -> Option<(&str, String, u8)> {
 
 /// Encode zhuyin
 ///
-/// No tone number will be converted to tone 5.
+/// Returns None on a missing tone or invalid input.
 ///
 /// # Example
 /// ```
@@ -310,7 +311,7 @@ pub fn encode_zhuyin<S>(s: S) -> Option<String>
     let s = s.as_ref();
     if s == "e5" {
         return Some("ㄝ".to_owned())
-    } else if s == "r" || s == "r5" {
+    }  else if s == "r5" {
         return Some("ㄦ˙".to_owned())
     }
 
@@ -380,6 +381,8 @@ fn encode_zhuyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
 }
 
 /// Decode zhuyin
+///
+/// Returns None if invalid input.
 ///
 /// # Example
 /// ```
@@ -545,8 +548,6 @@ mod tests {
     #[test]
     fn encode_pinyin_test() {
         assert_eq!(encode_pinyin("e5"), s!("ê"));
-        assert_eq!(encode_pinyin("a0"), s!("a"));
-        assert_eq!(encode_pinyin("a"), s!("a"));
         assert_eq!(encode_pinyin("ju3"), s!("jǔ"));
         assert_eq!(encode_pinyin("jv3"), s!("jǔ"));
         assert_eq!(encode_pinyin("lvan4"), s!("lüàn")); // not valid, for test only
@@ -563,6 +564,8 @@ mod tests {
         assert_eq!(encode_pinyin("er2"), s!("ér"));
         assert_eq!(encode_pinyin("r5"), s!("r"));
 
+        assert_eq!(encode_pinyin("a"), None);
+        assert_eq!(encode_pinyin("a0"), None);
         assert_eq!(encode_pinyin("zh3"), None);
         assert_eq!(encode_pinyin("zhaang4"), None);
         assert_eq!(encode_pinyin("啊"), None);
@@ -574,8 +577,6 @@ mod tests {
     #[test]
     fn encode_zhuyin_test() {
         assert_eq!(encode_zhuyin("e5"), s!("ㄝ"));
-        assert_eq!(encode_zhuyin("a0"), s!("ㄚ˙"));
-        assert_eq!(encode_zhuyin("a"), s!("ㄚ˙"));
         assert_eq!(encode_zhuyin("ju3"), s!("ㄐㄩˇ"));
         assert_eq!(encode_zhuyin("jv3"), s!("ㄐㄩˇ"));
         assert_eq!(encode_zhuyin("lvan4"), s!("ㄌㄩㄢˋ")); // not valid, for test only
@@ -598,6 +599,8 @@ mod tests {
         assert_eq!(encode_zhuyin("yue4"), s!("ㄩㄝˋ"));
         assert_eq!(encode_zhuyin("zhi4"), s!("ㄓˋ"));
 
+        assert_eq!(encode_zhuyin("a"), None);
+        assert_eq!(encode_zhuyin("a0"), None);
         assert_eq!(encode_zhuyin("zh3"), None);
         assert_eq!(encode_zhuyin("zhaang4"), None);
         assert_eq!(encode_zhuyin("啊"), None);
