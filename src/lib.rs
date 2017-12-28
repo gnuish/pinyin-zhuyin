@@ -60,15 +60,15 @@ fn tone_rhyme(s: &[u8], tone: u8) -> String {
     ret.push(c1 as char);
     ret.push(get_tonal_mark(c2, tone));
     ret.push_str(unsafe { str::from_utf8_unchecked(&s[2..]) });
-    return ret
+    ret
 }
 
 fn is_rhyme(c: u8) -> bool {
-    return c == b'a' || c == b'e' || c == b'i' || c == b'o' || c == b'u' || c == b'v'
+    c == b'a' || c == b'e' || c == b'i' || c == b'o' || c == b'u' || c == b'v'
 }
 
 fn is_consonant(c: u8) -> bool {
-    return c >= b'a' && c <= b'z' && !is_rhyme(c)
+    c >= b'a' && c <= b'z' && !is_rhyme(c)
 }
 
 /// Decode a toned rhyme to (rhyme, tone)
@@ -142,7 +142,7 @@ fn _split(s: &str) -> Option<(&str, &str, u8)> {
     let rhyme = unsafe { str::from_utf8_unchecked(&s[consonant.len()..pos]) };
 
     // Rhyme could not be empty, and the length of tone is at most 1
-    if rhyme.len() == 0 || s.len() - pos > 2 {
+    if rhyme.is_empty() || s.len() - pos > 2 {
         return None
     }
 
@@ -191,7 +191,7 @@ fn encode_pinyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
     let consonant = consonant.as_bytes();
     let mut rhyme = rhyme.as_bytes().to_vec();
 
-    if consonant.len() > 0 {
+    if !consonant.is_empty() {
         // Is it a valid consonant?
         if MAP_P2Z.get(unsafe { str::from_utf8_unchecked(consonant) }) == None {
             return None
@@ -221,7 +221,7 @@ fn encode_pinyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
         rhyme = "ü".to_owned() + &rhyme[1..];
     }
 
-    return Some(unsafe { str::from_utf8_unchecked(&consonant).to_owned() } + &rhyme)
+    Some(unsafe { str::from_utf8_unchecked(consonant).to_owned() } + &rhyme)
 }
 
 /// Decode pinyin
@@ -249,8 +249,8 @@ pub fn decode_pinyin<S>(s: S) -> Option<String>
     let (consonant, rhyme, tone) = decode_pinyin_to_parts(s)?;
 
     let mut ret = Vec::with_capacity(7);
-    ret.extend_from_slice(&consonant.as_bytes());
-    ret.extend_from_slice(&rhyme.as_bytes());
+    ret.extend_from_slice(consonant.as_bytes());
+    ret.extend_from_slice(rhyme.as_bytes());
     ret.push(tone + b'0');
     Some(unsafe { String::from_utf8_unchecked(ret) })
 }
@@ -269,7 +269,7 @@ fn decode_pinyin_to_parts(s: &str) -> Option<(&str, String, u8)> {
     }
 
     // Is it a valid consonant?
-    if consonant.len() > 0 {
+    if !consonant.is_empty() {
         if MAP_P2Z.get(unsafe { str::from_utf8_unchecked(consonant) }) == None {
             return None
         }
@@ -279,7 +279,7 @@ fn decode_pinyin_to_parts(s: &str) -> Option<(&str, String, u8)> {
     {
         let rhyme_bytes = unsafe { untoned_rhyme.as_bytes_mut() };
         // convert 'u' to 'v' if consonant is 'j', 'q', 'x' or 'y'
-        if consonant.len() > 0 && rhyme_bytes[0] == b'u' {
+        if !consonant.is_empty() && rhyme_bytes[0] == b'u' {
             let c = consonant[0];
             if c == b'j' || c == b'q' || c == b'x' || c == b'y' {
                 rhyme_bytes[0] = b'v';
@@ -331,7 +331,7 @@ fn encode_zhuyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
     let mut rhyme = rhyme.as_bytes().to_vec();
 
     // Convert 'u' to 'v' since it's enforced in Zhuyin and our table
-    if rhyme[0] == b'u' && consonant.len() > 0 {
+    if rhyme[0] == b'u' && !consonant.is_empty() {
         let c = consonant[0];
         if c == b'j' || c == b'q' || c == b'x' || c == b'y' {
             rhyme[0] = b'v';
@@ -345,10 +345,8 @@ fn encode_zhuyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
             consonant == b"s" || consonant == b"y" {
                 rhyme.clear();
         }
-    } else if consonant == b"w" {
-        if rhyme == b"u" {
-            consonant.clear();
-        }
+    } else if consonant == b"w" && rhyme == b"u" {
+        consonant.clear();
     } else if consonant == b"y" {
         if rhyme == b"v" || rhyme == b"e" || rhyme == b"ve" || rhyme == b"in" ||
             rhyme == b"van" || rhyme == b"ing" || rhyme == b"vn" {
@@ -356,7 +354,7 @@ fn encode_zhuyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
         }
     }
 
-    if consonant.len() > 0 {
+    if !consonant.is_empty() {
         if let Some(zhuyin) = MAP_P2Z.get(unsafe { str::from_utf8_unchecked(&consonant) }) {
             consonant.clear();
             consonant.extend_from_slice(zhuyin.as_bytes());
@@ -365,7 +363,7 @@ fn encode_zhuyin_from_parts(consonant: &str, rhyme: &str, tone: u8) -> Option<St
         }
     }
 
-    if rhyme.len() > 0 {
+    if !rhyme.is_empty() {
         if let Some(zhuyin) = MAP_P2Z.get(unsafe { str::from_utf8_unchecked(&rhyme) }) {
             rhyme.clear();
             rhyme.extend_from_slice(zhuyin.as_bytes());
@@ -400,12 +398,12 @@ pub fn decode_zhuyin<S>(s: S) -> Option<String>
     }
 
     let (consonant, rhyme, tone) = decode_zhuyin_to_parts(s)?;
-    if rhyme.len() == 0 {
+    if rhyme.is_empty() {
         return None
     }
     let mut ret = Vec::with_capacity(7);
-    ret.extend_from_slice(&consonant.as_bytes());
-    ret.extend_from_slice(&rhyme.as_bytes());
+    ret.extend_from_slice(consonant.as_bytes());
+    ret.extend_from_slice(rhyme.as_bytes());
     ret.push(tone + b'0');
     Some(unsafe { String::from_utf8_unchecked(ret) })
 }
@@ -444,7 +442,7 @@ fn decode_zhuyin_to_parts(s: &str) -> Option<(String, String, u8)> {
         return None
     }
 
-    if rhyme.len() == 0 {
+    if rhyme.is_empty() {
         // If 整體認讀, the rhyme should be 'i'
         match consonant.as_slice() {
             b"zh" | b"ch" | b"sh" | b"r" |
@@ -469,7 +467,7 @@ fn decode_zhuyin_to_parts(s: &str) -> Option<(String, String, u8)> {
         _ => return None,
     };
 
-	if consonant.len() == 0 {
+	if consonant.is_empty() {
         // Handle yi, wu, yv 整體認讀, and the special case "ong" to "weng"
 		if rhyme == b"i" || rhyme == b"v" || rhyme == b"e" ||
 			rhyme == b"ve" || rhyme == b"in" || rhyme == b"van" ||

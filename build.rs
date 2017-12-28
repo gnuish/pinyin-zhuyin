@@ -1,3 +1,4 @@
+//! PHF compile-time maps
 extern crate phf_codegen;
 
 use std::env;
@@ -7,10 +8,14 @@ use std::path::Path;
 
 fn main() {
     let path = Path::new(&env::var("OUT_DIR").unwrap()).join("codegen.rs");
-    let mut file = BufWriter::new(File::create(&path).unwrap());
+    let mut out_file = BufWriter::new(File::create(&path).unwrap());
 
-    // Pinyin to Zhuyin
-    write!(&mut file, "static MAP_P2Z: phf::Map<&str, &str> = ").unwrap();
+    write_pinyin_map(&mut out_file);
+    write_zhuyin_map(&mut out_file);
+}
+
+fn write_pinyin_map<W: Write>(file: &mut W) {
+    write!(file, "static MAP_P2Z: phf::Map<&str, &str> = ").unwrap();
     phf_codegen::Map::new()
         .entry("b", "\"ㄅ\"").entry("d", "\"ㄉ\"").entry("g", "\"ㄍ\"")
         .entry("p", "\"ㄆ\"").entry("t", "\"ㄊ\"").entry("k", "\"ㄎ\"")
@@ -25,7 +30,7 @@ fn main() {
         .entry("i", "\"ㄧ\"").entry("a", "\"ㄚ\"").entry("ai", "\"ㄞ\"").entry("an" , "\"ㄢ\"")
         .entry("u", "\"ㄨ\"").entry("o", "\"ㄛ\"").entry("ei", "\"ㄟ\"").entry("en" , "\"ㄣ\"")
         .entry("v", "\"ㄩ\"").entry("e", "\"ㄜ\"").entry("ao", "\"ㄠ\"").entry("ang", "\"ㄤ\"")
-                                          .entry("ou", "\"ㄡ\"").entry("eng", "\"ㄥ\"")
+                                                  .entry("ou", "\"ㄡ\"").entry("eng", "\"ㄥ\"")
 
         .entry("ia" , "\"ㄧㄚ\"").entry("ua" , "\"ㄨㄚ\"").entry("ing", "\"ㄧㄥ\"").entry("iang", "\"ㄧㄤ\"")
         .entry("ie" , "\"ㄧㄝ\"").entry("uo" , "\"ㄨㄛ\"").entry("ong", "\"ㄨㄥ\"").entry("uang", "\"ㄨㄤ\"")
@@ -37,12 +42,12 @@ fn main() {
         .entry("er", "\"ㄦ\"")
         .entry("y", "\"ㄧ\"").entry("w", "\"ㄨ\"")
 
-        .build(&mut file)
-        .unwrap();
-    write!(&mut file, ";\n").unwrap();
+        .build(file).unwrap();
+    write!(file, ";\n").unwrap();
+}
 
-    // Zhuyin to Pinyin
-    write!(&mut file, "static MAP_Z2P: phf::Map<&str, &str> = ").unwrap();
+fn write_zhuyin_map<W: Write>(file: &mut W) {
+    write!(file, "static MAP_Z2P: phf::Map<&str, &str> = ").unwrap();
     phf_codegen::Map::new()
         .entry("ㄅ", "\"b\"").entry("ㄉ", "\"d\"").entry("ㄍ", "\"g\"")
         .entry("ㄆ", "\"p\"").entry("ㄊ", "\"t\"").entry("ㄎ", "\"k\"")
@@ -68,7 +73,6 @@ fn main() {
 
         .entry("ㄦ", "\"er\"")
 
-        .build(&mut file)
-        .unwrap();
-    write!(&mut file, ";\n").unwrap();
+        .build(file).unwrap();
+    write!(file, ";\n").unwrap();
 }
