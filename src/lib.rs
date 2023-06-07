@@ -430,7 +430,7 @@ fn decode_zhuyin_to_parts(s: &str) -> Option<(String, String, u8)> {
         // The last char should be a tone
         let tone_slice = &s[i..];
         for (j, t) in ZHUYIN_TONES.into_iter().enumerate() {
-            if &tone_slice == t {
+            if tone_slice == t {
                 if j == 0 {
                     tone = 5;
                 } else {
