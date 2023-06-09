@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! PHF compile-time maps
 extern crate phf_codegen;
 
