@@ -1,6 +1,6 @@
 # pinyin_zhuyin
 
-A library to convert between and work with pinyin and zhuyin.
+A library to convert between pinyin and zhuyin.
 
 The original library is Bomin Zhang's Go library "zhuyin".
 
@@ -14,13 +14,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-pinyin_zhuyin = "0.1"
-```
-
-and this to your crate root:
-
-```rust
-extern crate pinyin_zhuyin;
+pinyin_zhuyin = "0.2"
 ```
 
 ## API
