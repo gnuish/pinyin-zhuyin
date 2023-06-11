@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-//! Convert between pinyin forms or zhuyin.
+//! Convert between pinyin forms and zhuyin.
 extern crate phf;
 
 use std::str;
@@ -10,14 +10,17 @@ use std::string::String;
 include!(concat!(env!("OUT_DIR"), "/codegen.rs"));
 
 static PINYIN_TONES: [[char; 5]; 6] = [
-    ['a', 'ā', 'á', 'ǎ', 'à'],
-    ['o', 'ō', 'ó', 'ǒ', 'ò'],
-    ['e', 'ē', 'é', 'ě', 'è'],
-    ['i', 'ī', 'í', 'ǐ', 'ì'],
-    ['u', 'ū', 'ú', 'ǔ', 'ù'],
-    ['ü', 'ǖ', 'ǘ', 'ǚ', 'ǜ'],
+    ['ā', 'á', 'ǎ', 'à', 'a'],
+    ['ō', 'ó', 'ǒ', 'ò', 'o'],
+    ['ē', 'é', 'ě', 'è', 'e'],
+    ['ī', 'í', 'ǐ', 'ì', 'i'],
+    ['ū', 'ú', 'ǔ', 'ù', 'u'],
+    ['ǖ', 'ǘ', 'ǚ', 'ǜ', 'ü'],
 ];
-static ZHUYIN_TONES: [&str; 5] = ["˙", "", "ˊ", "ˇ", "ˋ"];
+static ZHUYIN_TONES: [char; 4] = ['ˊ', 'ˇ', 'ˋ', '˙'];
+
+const ZHUYIN_CHAR_SIZE: usize = 3;
+const ZHUYIN_TONE_SIZE: usize = 2;
 
 /// Returns the toned char for `c` of `tone` in pinyin
 fn get_tonal_mark<C>(c: C, tone: u8) -> char
@@ -28,9 +31,10 @@ where
     if c == 'v' {
         c = 'ü';
     }
-    for t in PINYIN_TONES.iter() {
-        if c == t[0] {
-            return t[tone as usize];
+
+    for vowel_tones in PINYIN_TONES.iter() {
+        if c == vowel_tones[4] {
+            return vowel_tones[tone as usize - 1];
         }
     }
     unreachable!();
@@ -39,7 +43,7 @@ where
 fn tone_rhyme(s: &str, tone: u8) -> String {
     let s_bytes = s.as_bytes();
 
-    let mut ret = String::with_capacity(3);
+    let mut ret = String::with_capacity(5);
 
     // If only one character, tone it and done
     if s.len() == 1 {
@@ -74,23 +78,25 @@ fn is_consonant(c: u8) -> bool {
     c.is_ascii_lowercase() && !is_rhyme(c)
 }
 
-/// Decode a toned rhyme to (rhyme, tone)
+/// Decode a rhyme with tone marks to a rhyme without marks and the tone number
 fn decode_rhyme(s: &str) -> Option<(String, u8)> {
     let mut rhyme = String::with_capacity(4);
-    let mut tone = 0;
+    let mut tone = 5; // The pinyin tone if no accents are encountered is the 5th tone
 
-    // TODO possibly iterate over bytes
     // Push each char to the return string, un-accenting chars along the way
     for mut c in s.chars() {
-        for t in PINYIN_TONES.iter() {
-            for i in 1..t.len() {
-                if c == t[i] {
-                    // If there's two toned vowels, it's malformed
-                    c = t[0];
-                    if tone != 0 {
+        for vowel_tones in PINYIN_TONES.iter() {
+            for tone_idx in 0..4 {
+                if c == vowel_tones[tone_idx] {
+                    // An accented vowel was found and now we need to set it to the vowel without accents (tone 5)
+                    c = vowel_tones[4];
+
+                    // Update the rhyme's tone. If it was already changed from the default,
+                    // a second accented vowel was encountered and this is invalid input.
+                    if tone != 5 {
                         return None;
                     }
-                    tone = i as u8;
+                    tone = tone_idx as u8 + 1;
                 }
             }
         }
@@ -132,6 +138,7 @@ fn _split(s: &str) -> Option<(&str, &str, u8)> {
     let s_bytes = s.as_bytes();
     let mut pos = 0;
 
+    // Find consonant part
     for &b in s_bytes.iter() {
         if !is_consonant(b) {
             break;
@@ -140,6 +147,7 @@ fn _split(s: &str) -> Option<(&str, &str, u8)> {
     }
     let consonant = &s[0..pos];
 
+    // Find rhyme part
     for &b in s_bytes.iter().skip(pos) {
         if !b.is_ascii_lowercase() {
             break;
@@ -147,16 +155,18 @@ fn _split(s: &str) -> Option<(&str, &str, u8)> {
         pos += 1;
     }
     let rhyme = &s[consonant.len()..pos];
+
+    // Check for invalid inputs:
+    // 1) No rhyme
+    // 2) More than one character for the tone
     if rhyme.is_empty() || s.len() - pos > 2 {
         return None;
     }
 
-    // No tone is invalid
-    if pos == s.len() {
-        return None;
-    }
-
+    // Last byte is the tone
     let tone = s.chars().rev().next().unwrap().to_digit(10)? as u8;
+
+    // Tone can only be 1-5
     if !(1..=5).contains(&tone) {
         return None;
     }
@@ -194,7 +204,7 @@ where
 }
 
 fn encode_pinyin_from_parts(consonant: String, rhyme: String, tone: u8) -> Option<String> {
-    let mut rhyme = rhyme;
+    let mut replace_v_to_u = false;
 
     if !consonant.is_empty() {
         // Is it a valid consonant?
@@ -204,7 +214,7 @@ fn encode_pinyin_from_parts(consonant: String, rhyme: String, tone: u8) -> Optio
         if rhyme.as_bytes()[0] == b'v' {
             let c = consonant.as_bytes()[0];
             if c == b'j' || c == b'q' || c == b'x' || c == b'y' {
-                rhyme.replace_range(0..1, "u");
+                replace_v_to_u = true;
             }
         }
     }
@@ -212,15 +222,15 @@ fn encode_pinyin_from_parts(consonant: String, rhyme: String, tone: u8) -> Optio
     // Is it a valid rhyme?
     MAP_P2Z.get(&rhyme)?;
 
-    // Tone the rhyme and convert 'v' to 'ü'
-    let mut tone = tone;
-    if tone == 5 {
-        tone = 0;
-    }
+    let rhyme = if replace_v_to_u {
+        replace_first_letter(rhyme, b'u')
+    } else {
+        rhyme
+    };
+    let rhyme = tone_rhyme(&rhyme, tone);
 
     let mut ret = consonant;
-
-    let rhyme = tone_rhyme(&rhyme, tone);
+    ret.reserve_exact(rhyme.len() + 1);
     if rhyme.as_bytes()[0] == b'v' {
         ret.push('ü');
         ret.push_str(&rhyme[1..]);
@@ -256,7 +266,7 @@ where
 
     let (consonant, rhyme, tone) = decode_pinyin_to_parts(s)?;
 
-    let mut ret = String::with_capacity(7);
+    let mut ret = String::with_capacity(consonant.len() + rhyme.len() + 1);
     ret.push_str(consonant);
     ret.push_str(&rhyme);
     ret.push((tone + b'0') as char);
@@ -280,14 +290,21 @@ fn decode_pinyin_to_parts(s: &str) -> Option<(&str, String, u8)> {
         MAP_P2Z.get(consonant)?;
     }
 
-    let (mut untoned_rhyme, tone) = decode_rhyme(rhyme)?;
+    let (untoned_rhyme, tone) = decode_rhyme(rhyme)?;
+    let mut convert_u_to_v = false;
     // convert 'u' to 'v' if consonant is 'j', 'q', 'x' or 'y'
     if !consonant.is_empty() && untoned_rhyme.as_bytes()[0] == b'u' {
         let c = consonant.as_bytes()[0];
         if c == b'j' || c == b'q' || c == b'x' || c == b'y' {
-            untoned_rhyme.replace_range(0..1, "v");
+            convert_u_to_v = true;
+            // untoned_rhyme.replace_range(0..1, "v");
         }
     }
+    let untoned_rhyme = if convert_u_to_v {
+        replace_first_letter(untoned_rhyme, b'v')
+    } else {
+        untoned_rhyme
+    };
 
     // Is it a valid rhyme?
     MAP_P2Z.get(&*untoned_rhyme)?;
@@ -315,26 +332,28 @@ where
         return Some("ㄦ˙".to_owned());
     }
 
-    let (consonant, rhyme, mut tone) = _split(s)?;
-    if tone == 5 {
-        tone = 0;
-    }
+    let (consonant, rhyme, tone) = _split(s)?;
     encode_zhuyin_from_parts(consonant.to_owned(), rhyme.to_owned(), tone)
 }
 
 fn encode_zhuyin_from_parts(consonant: String, rhyme: String, tone: u8) -> Option<String> {
     let mut consonant = consonant;
-    let mut rhyme = rhyme;
 
     // Convert 'u' to 'v' since it's enforced in Zhuyin and our table
+    let mut convert_u_to_v = false;
     if rhyme.as_bytes()[0] == b'u' && !consonant.is_empty() {
         let c = consonant.as_bytes()[0];
         if c == b'j' || c == b'q' || c == b'x' || c == b'y' {
-            rhyme.replace_range(0..1, "v");
+            convert_u_to_v = true;
         }
     }
+    let mut rhyme = if convert_u_to_v {
+        replace_first_letter(rhyme, b'v')
+    } else {
+        rhyme
+    };
 
-    // Handle 整體認讀
+    // Handle fixed whole syllables 整體認讀
     if (consonant.as_bytes() == b"zh"
         || consonant.as_bytes() == b"ch"
         || consonant.as_bytes() == b"sh"
@@ -359,6 +378,7 @@ fn encode_zhuyin_from_parts(consonant: String, rhyme: String, tone: u8) -> Optio
         consonant.clear();
     }
 
+    // Convert consonant
     if !consonant.is_empty() {
         if let Some(zhuyin) = MAP_P2Z.get(&consonant) {
             consonant.clear();
@@ -368,6 +388,7 @@ fn encode_zhuyin_from_parts(consonant: String, rhyme: String, tone: u8) -> Optio
         }
     }
 
+    // Convert rhyme
     if !rhyme.is_empty() {
         if let Some(zhuyin) = MAP_P2Z.get(&rhyme) {
             rhyme.clear();
@@ -377,10 +398,14 @@ fn encode_zhuyin_from_parts(consonant: String, rhyme: String, tone: u8) -> Optio
         }
     }
 
-    let mut ret = String::with_capacity(11);
+    let mut ret = String::with_capacity(consonant.len() + rhyme.len() + ZHUYIN_TONE_SIZE);
     ret.push_str(&consonant);
     ret.push_str(&rhyme);
-    ret.push_str(ZHUYIN_TONES[tone as usize]);
+
+    // Add tone char
+    if tone != 1 {
+        ret.push(ZHUYIN_TONES[tone as usize - 2])
+    }
 
     Some(ret)
 }
@@ -409,7 +434,7 @@ where
     if rhyme.is_empty() {
         return None;
     }
-    let mut ret = String::with_capacity(7);
+    let mut ret = String::with_capacity(consonant.len() + rhyme.len() + 1);
     ret.push_str(&consonant);
     ret.push_str(&rhyme);
     ret.push((tone + b'0') as char);
@@ -417,40 +442,32 @@ where
 }
 
 fn decode_zhuyin_to_parts(s: &str) -> Option<(String, String, u8)> {
-    let mut consonant = String::with_capacity(1);
-    let mut rhyme = String::with_capacity(4);
-    let mut tone: u8 = 1;
-    let mut useless_char_buf = [0; 4];
+    let mut consonant = String::with_capacity(ZHUYIN_CHAR_SIZE);
+    let mut rhyme = String::with_capacity(ZHUYIN_CHAR_SIZE * 2);
+    let mut tone: u8 = 1; // Zhuyin's default tone if there is no tone mark is the first tone
 
-    // TODO is iterating over bytes instead worth it?
     'split_input: for (i, c) in s.char_indices() {
-        let c = c.encode_utf8(&mut useless_char_buf);
-        if let Some(decoded) = MAP_Z2P.get(c) {
+        if let Some(decoded) = MAP_Z2P.get(&s[i..i + c.len_utf8()]) {
             // Add char as consonant or rhyme accordingly
             match i == 0 && is_consonant(decoded.as_bytes()[0]) {
                 true => consonant.push_str(decoded),
-                false => rhyme.push_str(c),
+                false => rhyme.push(c),
             }
             continue;
         }
 
-        // The last char should be a tone
-        let tone_slice = &s[i..];
-        for (j, t) in ZHUYIN_TONES.into_iter().enumerate() {
-            if tone_slice == t {
-                if j == 0 {
-                    tone = 5;
-                } else {
-                    tone = j as u8;
-                }
+        // The remaining char, if any, is a tone
+        for (j, tone_char) in ZHUYIN_TONES.into_iter().enumerate() {
+            if c == tone_char {
+                // The index ZHUYIN_TONES[0] starts at tone #2
+                tone = j as u8 + 2;
                 break 'split_input;
             }
         }
         return None;
     }
-
     if rhyme.is_empty() {
-        // If 整體認讀, the rhyme should be 'i'
+        // Certain consonants add an 'i' if there's no rhyme
         match consonant.as_str() {
             "zh" | "ch" | "sh" | "r" | "z" | "c" | "s" => {
                 rhyme.push('i');
@@ -469,8 +486,8 @@ fn decode_zhuyin_to_parts(s: &str) -> Option<(String, String, u8)> {
         _ => return None,
     };
 
+    // Handle yi, wu, yv whole syllables 整體認讀, and the special case "ong" to "weng"
     if consonant.is_empty() {
-        // Handle yi, wu, yv 整體認讀, and the special case "ong" to "weng"
         if rhyme == "i"
             || rhyme == "v"
             || rhyme == "e"
@@ -540,6 +557,13 @@ where
     encode_pinyin(decode_zhuyin(s)?)
 }
 
+/// Replace a string's first letter without reallocating
+fn replace_first_letter(s: String, new_byte: u8) -> String {
+    let mut bytes = s.into_bytes();
+    bytes[0] = new_byte;
+    String::from_utf8(bytes).unwrap()
+}
+
 mod tests {
     #[allow(unused_imports)]
     use super::*;
@@ -554,7 +578,7 @@ mod tests {
         assert_eq!(encode_pinyin("e5"), s!("ê"));
         assert_eq!(encode_pinyin("ju3"), s!("jǔ"));
         assert_eq!(encode_pinyin("jv3"), s!("jǔ"));
-        assert_eq!(encode_pinyin("lvan4"), s!("lüàn")); // not valid, for test only
+        assert_eq!(encode_pinyin("lvan4"), s!("lüàn"));
         assert_eq!(encode_pinyin("zhuan4"), s!("zhuàn"));
         assert_eq!(encode_pinyin("zhao2"), s!("zháo"));
         assert_eq!(encode_pinyin("leng1"), s!("lēng"));
@@ -564,7 +588,7 @@ mod tests {
         assert_eq!(encode_pinyin("yi2"), s!("yí"));
         assert_eq!(encode_pinyin("yuan2"), s!("yuán"));
         assert_eq!(encode_pinyin("yvan2"), s!("yuán"));
-        assert_eq!(encode_pinyin("min2"), s!("mín"));
+        assert_eq!(encode_pinyin("min5"), s!("min"));
         assert_eq!(encode_pinyin("er2"), s!("ér"));
         assert_eq!(encode_pinyin("r5"), s!("r"));
 
@@ -572,6 +596,7 @@ mod tests {
         assert_eq!(encode_pinyin("a0"), None);
         assert_eq!(encode_pinyin("zh3"), None);
         assert_eq!(encode_pinyin("zhaang4"), None);
+        assert_eq!(encode_pinyin("zhang6"), None);
         assert_eq!(encode_pinyin("啊"), None);
         assert_eq!(encode_pinyin("a5啊"), None);
         assert_eq!(encode_pinyin("啊a5"), None);
@@ -583,7 +608,7 @@ mod tests {
         assert_eq!(encode_zhuyin("e5"), s!("ㄝ"));
         assert_eq!(encode_zhuyin("ju3"), s!("ㄐㄩˇ"));
         assert_eq!(encode_zhuyin("jv3"), s!("ㄐㄩˇ"));
-        assert_eq!(encode_zhuyin("lvan4"), s!("ㄌㄩㄢˋ")); // not valid, for test only
+        assert_eq!(encode_zhuyin("lvan4"), s!("ㄌㄩㄢˋ"));
         assert_eq!(encode_zhuyin("zhuan4"), s!("ㄓㄨㄢˋ"));
         assert_eq!(encode_zhuyin("zhao2"), s!("ㄓㄠˊ"));
         assert_eq!(encode_zhuyin("leng1"), s!("ㄌㄥ"));
@@ -593,7 +618,7 @@ mod tests {
         assert_eq!(encode_zhuyin("yi2"), s!("ㄧˊ"));
         assert_eq!(encode_zhuyin("yuan2"), s!("ㄩㄢˊ"));
         assert_eq!(encode_zhuyin("yvan2"), s!("ㄩㄢˊ"));
-        assert_eq!(encode_zhuyin("min2"), s!("ㄇㄧㄣˊ"));
+        assert_eq!(encode_zhuyin("min5"), s!("ㄇㄧㄣ˙"));
         assert_eq!(encode_zhuyin("er2"), s!("ㄦˊ"));
         assert_eq!(encode_zhuyin("r5"), s!("ㄦ˙"));
         // Zhuyin-specific
@@ -607,6 +632,7 @@ mod tests {
         assert_eq!(encode_zhuyin("a0"), None);
         assert_eq!(encode_zhuyin("zh3"), None);
         assert_eq!(encode_zhuyin("zhaang4"), None);
+        assert_eq!(encode_pinyin("zhang6"), None);
         assert_eq!(encode_zhuyin("啊"), None);
         assert_eq!(encode_zhuyin("a5啊"), None);
         assert_eq!(encode_zhuyin("啊a5"), None);
@@ -627,7 +653,7 @@ mod tests {
         assert_eq!(decode_pinyin("ǎn"), s!("an3"));
         assert_eq!(decode_pinyin("yí"), s!("yi2"));
         assert_eq!(decode_pinyin("yuán"), s!("yvan2"));
-        assert_eq!(decode_pinyin("mín"), s!("min2"));
+        assert_eq!(decode_pinyin("min"), s!("min5"));
         assert_eq!(decode_pinyin("ér"), s!("er2"));
         assert_eq!(decode_pinyin("r"), s!("r5"));
 
@@ -658,7 +684,7 @@ mod tests {
         assert_eq!(decode_zhuyin("ㄩㄝˋ"), s!("yve4"));
         assert_eq!(decode_zhuyin("ㄧˊ"), s!("yi2"));
         assert_eq!(decode_zhuyin("ㄩㄢˊ"), s!("yvan2"));
-        assert_eq!(decode_zhuyin("ㄇㄧㄣˊ"), s!("min2"));
+        assert_eq!(decode_zhuyin("ㄇㄧㄣ˙"), s!("min5"));
         assert_eq!(decode_zhuyin("ㄦˊ"), s!("er2"));
         assert_eq!(decode_zhuyin("ㄦ˙"), s!("r5"));
         // Zhuyin-specific
