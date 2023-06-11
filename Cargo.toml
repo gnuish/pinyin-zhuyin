@@ -1,7 +1,7 @@
 [package]
 name = "pinyin_zhuyin"
-version = "0.1.2"
-authors = ["Ariel Dabalsa <arieldabalsa@gmail.com>"]
+version = "0.2.0"
+authors = ["Ariel Dabalsa <adabalsa@protonmail.com>"]
 description = "Convert between pinyin forms and zhuyin"
 edition = "2021"
 repository = "https://github.com/gnuish/pinyin-zhuyin"
